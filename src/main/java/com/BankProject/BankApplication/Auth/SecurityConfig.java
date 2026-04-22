@@ -1,7 +1,6 @@
 package com.BankProject.BankApplication.Auth;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -25,62 +24,61 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
-     // @Autowired
-     // private CustomUserDetailsService userDetailsService;
+    @Autowired
+    private JwtAuthFilter jwtAuthFilter;
 
-     @Autowired
-     private JwtAuthFilter JwtAuthFilter;
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+        return httpSecurity
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(http -> {
+                    // Public endpoints
+                    http.requestMatchers(
+                            "/api/authenticate",
+                            "/api/signup",
+                            "/login",
+                            "/user/verify",
+                            "/actuator/**"
+                    ).permitAll();
 
-     // This is the security filter chain used to authenticate the user .
-     @Bean
-     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
-          return httpSecurity
-                    .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                    .csrf(csrf -> csrf.disable())
-                    .authorizeHttpRequests(http -> {
-                         http.requestMatchers("/login", "/api/**", "/actuator/**", "/authenticate", "/user/verify").permitAll()
-                                   .requestMatchers("/admin/**").hasRole("ADMIN")
-                                   .requestMatchers("/user/**", "/transactions/**").hasAnyRole("USER", "ADMIN")
-                                   .anyRequest().authenticated();
-                    })
-                    .addFilterBefore(JwtAuthFilter,
-                              UsernamePasswordAuthenticationFilter.class)
-                    .logout(logout -> {
-                         logout.logoutUrl("/logout");
-                         // .logoutSuccessUrl("/login");
-                    })
-                    .build();
-     }
+                    // Admin endpoints
+                    http.requestMatchers("/api/admin/**").hasRole("ADMIN");
 
-     // CORS configuration
-     @Value("${app.cors.allowed-origins}")
-     private String allowedOrigins;
+                    // User endpoints
+                    http.requestMatchers("/api/user/**", "/api/transactions/**")
+                            .hasAnyRole("USER", "ADMIN");
 
-     @Bean
-     public CorsConfigurationSource corsConfigurationSource() {
-          CorsConfiguration configuration = new CorsConfiguration();
+                    http.anyRequest().authenticated();
+                })
+                // Add JWT filter before UsernamePasswordAuthenticationFilter
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .logout(logout -> logout.logoutUrl("/logout"))
+                .build();
+    }
 
-          List<String> origins = Arrays.asList(allowedOrigins.split(","));
-          configuration.setAllowedOriginPatterns(origins);
-          configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-          configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept"));
-          configuration.setAllowCredentials(true);
-          configuration.setMaxAge(3600L);
+    // Allowed origins for CORS
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOriginPatterns(List.of("http://localhost:3000"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
 
-          UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-          source.registerCorsConfiguration("/**", configuration);
-          return source;
-     }     
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
 
-     // Password encoder that encodes the password in Bcrypt Password encoding
-     // technique
-     @Bean
-     public PasswordEncoder passwordEncoder() {
-          return new BCryptPasswordEncoder();
-     }
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
-     @Bean
-     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
-          return configuration.getAuthenticationManager();
-     }
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
+    }
 }

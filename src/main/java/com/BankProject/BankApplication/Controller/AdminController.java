@@ -21,7 +21,7 @@ import com.BankProject.BankApplication.DTOs.UserAccountTemplate;
 import com.BankProject.BankApplication.Service.UserService;
 
 @RestController
-@RequestMapping("/admin")
+@RequestMapping("/api/admin")
 // This controller is responsible for handling admin functionalities
 public class AdminController {
      // This class will handle admin specific functionalities
