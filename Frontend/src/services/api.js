@@ -10,8 +10,8 @@
 import axios from "axios";
 import { isTokenExpired } from "../utils/jwtUtils";
 
-// Base URL WITHOUT automatic /api
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:8082";
+// Base URL is empty — nginx proxies /api/ to backend-service:8080
+const API_BASE_URL = "";
 
 /**
  * ApiService Class - Manages all backend API communication
